@@ -16,11 +16,11 @@ require("data.table")
 
 # Introduction
 
-
+Weight lifting excercise data has been gathered for Human Activity Recognition (HAR) research. The data contain measurements from accelerometers and gyroscopes attached to individuals as they carry out weight lifting. The individuals were asked to perform the excercise in a range of different ways, intentionally replicating five common weight lifting mistakes, which are classified in the data as Class A, B, C, D or E. The data will be analysed and a model will be fit to it in order to predict the class for a particular measurement. The model will be applied to a test data set and the predictions used in Quiz 4.
 
 ## Loading the data
 
-The data is loaded.
+The training and quiz test data is downloaded.
 
 ```{r load_data, cache=TRUE, warning=FALSE}
   if(!file.exists("pml-training.csv")) {
@@ -35,10 +35,11 @@ The data is loaded.
   set.seed(15846)
   
   data<-read.csv("pml-training.csv", header=TRUE, colClasses = "character")
-  str(data)  
+  nacols<-sum(apply(apply(data, 2, is.na), 2, sum)!=0)
+  dim<-dim(data)
 ```
 
-The data contains 159 variables and 19622 observations. Several variables contain missing data. The first 6 variables, including user identifiers and time stamps will be discarded from the analysis as it is not relevant to predicting the activity class. The variables will be converted to numeric data before the training and test sets are created. 50% of the data will be used for each set, with the training set used for training the model and the testing set used for cross-validation of the model. Finally, the quiz test set will also be loaded.
+The data contains `r dim[2]` variables and `r dim[1]` observations. Notably, `r nacols` variables contain missing data. The first 6 variables, including user identifiers and time stamps will be discarded from the analysis as it is not relevant to predicting the activity class. The variables will be converted to numeric data before the training and test sets are created. 50% of the data will be used for each set, with the training set used for training the model and the testing set used for cross-validation of the model. Finally, the quiz test set will also be loaded.
 
 
 ```{r modify, warning=FALSE}  
@@ -48,9 +49,6 @@ The data contains 159 variables and 19622 observations. Several variables contai
   nacols<-apply(apply(df, 2, is.na),2,sum) 
   df<-df[,names(nacols[nacols==0])]
   data<-mutate(df, classe=data$classe)
-  
-  trialIndex <-createDataPartition(data$classe, p=.1, list=FALSE)
-  data<-data[trialIndex,]
   
   trainIndex<-createDataPartition(data$classe, p=.5, list=FALSE)
   training<-data[trainIndex,]
@@ -94,7 +92,7 @@ After fitting the Random Forest model, the in-sample error is `r insampleerror`%
 
 The model will be cross-validated against the training data to determine the expected accuracy.
   
-```{r error}  
+```{r error, message=FALSE}  
   testPCA<-predict(preProc, testing[,-54])
   confusionMatrix(testing$classe, predict(modfit,testPCA))
   outofsampleerror <- (1 -  confusionMatrix(testing$classe, predict(modfit,testPCA))$overall[1]) * 100
@@ -103,9 +101,14 @@ The model will be cross-validated against the training data to determine the exp
 The expected out of sample error is `r outofsampleerror`%. This is error to expect when the model is used on data outside the training and test sets.
   
 ## Predictions
+
+The results of applying the model to the quiz test data set are given below.
+
 ```{r pred}
   quizPCA<-predict(preProc, quizset)
   quizpredictions<-predict(modfit, quizPCA)
+  names(quizpredictions)<-paste(rep("Test ", 20), seq(1:20))
+  print(quizpredictions)
 ```
 
 
