@@ -1,0 +1,111 @@
+---
+title: "Human Activity Recognition"
+author: "jpeyto"
+date: "16 Sept 2017"
+output:
+html_document:
+keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", options(scipen=999))
+require("caret")
+require("dplyr")
+require("data.table")
+```
+
+# Introduction
+
+
+
+## Loading the data
+
+The data is loaded.
+
+```{r load_data, cache=TRUE, warning=FALSE}
+  if(!file.exists("pml-training.csv")) {
+    fileURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+    download.file(fileURL, "pml-training.csv")
+  }
+  if(!file.exists("pml-testing.csv")) {
+    fileURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+    download.file(fileURL, "pml-testing.csv")
+  }
+
+  set.seed(15846)
+  
+  data<-read.csv("pml-training.csv", header=TRUE, colClasses = "character")
+  str(data)  
+```
+
+The data contains 159 variables and 19622 observations. Several variables contain missing data. The first 6 variables, including user identifiers and time stamps will be discarded from the analysis as it is not relevant to predicting the activity class. The variables will be converted to numeric data before the training and test sets are created. 50% of the data will be used for each set, with the training set used for training the model and the testing set used for cross-validation of the model. Finally, the quiz test set will also be loaded.
+
+
+```{r modify, warning=FALSE}  
+  sub<-data[,c(7:159)]
+  df<-as.data.table(sub)
+  df<-as.data.frame(df[, lapply(.SD, as.numeric)]) 
+  nacols<-apply(apply(df, 2, is.na),2,sum) 
+  df<-df[,names(nacols[nacols==0])]
+  data<-mutate(df, classe=data$classe)
+  
+  trialIndex <-createDataPartition(data$classe, p=.1, list=FALSE)
+  data<-data[trialIndex,]
+  
+  trainIndex<-createDataPartition(data$classe, p=.5, list=FALSE)
+  training<-data[trainIndex,]
+  testing<-data[-trainIndex,]
+  
+  quizset<-read.csv("pml-testing.csv", header=TRUE, colClasses = "character")
+  quizsub<-quizset[,c(7:159)]
+  quizdf<-as.data.table(quizsub)
+  quizdf<-as.data.frame(quizdf[, lapply(.SD, as.numeric)]) 
+  quizdf<-quizdf[,names(nacols[nacols==0])]
+  quizset<-quizdf
+```
+  
+## Pre-processing
+
+To determine if the data can be simplified before training the model, Principle Components Analysis (PCA) will be performed.
+
+```{r preproc, cache=TRUE}  
+  preProc<-preProcess(training[,-54], method="pca")
+  trainPCA<-predict(preProc, training[,-54])
+  trainPCA<-mutate(trainPCA, classe=training$classe)
+  numComp<-preProc$numComp
+  thresh<-preProc$thresh
+```
+
+Using PCA shows the number of variables required to explain `r thresh` of the variance is `r numComp`. As this significantly reduces the number of varialbes involved, the model will be trained using the `r numComp` principle components to reduce computational time.
+
+## Training
+
+A Random Forest model will be fit to the data. A Random Forest has been selected as it is generally one of the best performing prediction algorithms. 
+
+```{r train, cache=TRUE, message=FALSE}  
+  modfit<-train(classe~., method="rf", data=trainPCA)
+  confusionMatrix(training$classe, predict(modfit,trainPCA))
+  insampleerror <-  (1 - confusionMatrix(training$classe, predict(modfit,trainPCA))$overall[1]) * 100
+```
+  
+After fitting the Random Forest model, the in-sample error is `r insampleerror`%.
+  
+## Cross-validation
+
+The model will be cross-validated against the training data to determine the expected accuracy.
+  
+```{r error}  
+  testPCA<-predict(preProc, testing[,-54])
+  confusionMatrix(testing$classe, predict(modfit,testPCA))
+  outofsampleerror <- (1 -  confusionMatrix(testing$classe, predict(modfit,testPCA))$overall[1]) * 100
+```
+  
+The expected out of sample error is `r outofsampleerror`%. This is error to expect when the model is used on data outside the training and test sets.
+  
+## Predictions
+```{r pred}
+  quizPCA<-predict(preProc, quizset)
+  quizpredictions<-predict(modfit, quizPCA)
+```
+
+
