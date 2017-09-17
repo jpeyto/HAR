@@ -1,5 +1,5 @@
 # Human Activity Recognition
-jpeyto  
+J. Peyton  
 16 Sept 2017  
 
 
@@ -68,6 +68,20 @@ To determine if the data can be simplified before training the model, Principle 
 ```
 
 Using PCA shows the number of variables required to explain 0.95 of the variance is 25. As this significantly reduces the number of varialbes involved, the model will be trained using the 25 principle components to reduce computational time.
+
+From the plot below, it is clear that for each class the principle components exibit unique characteristics.
+
+
+```r
+  melt<-melt(trainPCA, id.vars="classe")  
+  ggplot() +
+  geom_point(data=melt, aes(x=variable, y=value, colour=variable), alpha=0.2, position="jitter") +
+  facet_grid(classe~., scales="free") + 
+  theme(legend.position="none") + 
+  labs(title="Principle Components by Classe", x = "Principle Component", y="")
+```
+
+<img src="assignment_files/figure-html/plot-1.png" style="display: block; margin: auto;" />
 
 ## Training
 
@@ -167,7 +181,7 @@ The model will be cross-validated against the training data to determine the exp
   outofsampleerror <- (1 -  confusionMatrix(testing$classe, predict(modfit,testPCA))$overall[1]) * 100
 ```
   
-The expected out of sample error is 3.4352701%. This is error to expect when the model is used on data outside the training and test sets.
+The expected out of sample error is 3.4250765%. This is error to expect when the model is used on data outside the training and test sets.
   
 ## Predictions
 

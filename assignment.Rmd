@@ -1,6 +1,6 @@
 ---
 title: "Human Activity Recognition"
-author: "jpeyto"
+author: "J. Peyton"
 date: "16 Sept 2017"
 output: 
   html_document: 
@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE, fig.align = "center", options(scipen=999))
 require("caret")
 require("dplyr")
 require("data.table")
+require("reshape2")
 ```
 
 # Introduction
@@ -75,6 +76,17 @@ To determine if the data can be simplified before training the model, Principle 
 ```
 
 Using PCA shows the number of variables required to explain `r thresh` of the variance is `r numComp`. As this significantly reduces the number of varialbes involved, the model will be trained using the `r numComp` principle components to reduce computational time.
+
+From the plot below, it is clear that for each class the principle components exibit unique characteristics.
+
+```{r plot, fig.width = 10, fig.height = 8}
+  melt<-melt(trainPCA, id.vars="classe")  
+  ggplot() +
+  geom_point(data=melt, aes(x=variable, y=value, colour=variable), alpha=0.2, position="jitter") +
+  facet_grid(classe~., scales="free") + 
+  theme(legend.position="none") + 
+  labs(title="Principle Components by Classe", x = "Principle Component", y="")
+```
 
 ## Training
 
